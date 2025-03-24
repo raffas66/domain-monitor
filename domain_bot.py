@@ -119,6 +119,6 @@ class DomainMonitorBot:
             raise
 
 # Configuration
-TOKEN = os.getenv('7505234682:AAE6l0ybYR62JH9bcVyc0CDRNRDgK6PpkqQ')  # Set in environment variables
+TOKEN = '7505234682:AAE6l0ybYR62JH9bcVyc0CDRNRDgK6PpkqQ'  # Replace with your actual token
 bot = DomainMonitorBot(TOKEN)
 bot.run()
