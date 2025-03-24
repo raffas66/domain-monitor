@@ -112,29 +112,35 @@ class DomainMonitorBot:
         ]
         await self.application.bot.set_my_commands(commands)
 
-    def run(self):
-        try:
-            logging.info("Bot starting...")
+def run(self):
+    try:
+        logging.info("Bot starting...")
+        
+        # Ensure job_queue is initialized
+        if not self.application.job_queue:
+            logging.error("No JobQueue available!")
+            return
+        
+        # Schedule daily notifications
+        self.application.job_queue.run_daily(
+            self.send_daily_notification,
+            time=time(hour=10, minute=0)
+        )
+        
+        # Schedule urgent checks every 2 days
+        self.application.job_queue.run_repeating(
+            self.send_telegram_alert,
+            interval=timedelta(days=2),
+            first=10
+        )
+        
+        # Start polling
+        self.application.run_polling()
 
-            # Schedule daily notifications
-            self.application.job_queue.run_daily(
-                self.send_daily_notification,
-                time=datetime.time(hour=10, minute=0)  # Make sure to import 'datetime' for time if needed
-            )
+    except Exception as e:
+        logging.error(f"Error running bot: {str(e)}")
+        raise
 
-            # Schedule urgent checks every 2 days
-            self.application.job_queue.run_repeating(
-                self.send_telegram_alert,
-                interval=timedelta(days=2),
-                first=10
-            )
-
-            # Start polling
-            self.application.run_polling()
-
-        except Exception as e:
-            logging.error(f"Error running bot: {str(e)}")
-            raise
 
 # Configuration
 TOKEN = '7505234682:AAE6l0ybYR62JH9bcVyc0CDRNRDgK6PpkqQ'  # Replace with your actual token
