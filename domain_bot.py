@@ -112,6 +112,18 @@ class DomainMonitorBot:
         ]
         await self.application.bot.set_my_commands(commands)
 
+
+    async def send_daily_notification(self, context):
+        """This is the function that sends a daily notification."""
+        # This is just a sample notification; you can customize it further
+        message = "Merhaba!, This is your daily domain expiration notification!"
+        for chat_id in self.notification_chats:
+            try:
+                await context.bot.send_message(chat_id=chat_id, text=message)
+                logging.info(f"Sent daily notification to {chat_id}")
+            except Exception as e:
+                logging.error(f"Failed to send daily notification to {chat_id}: {str(e)}")
+
     def run(self):
         """Start the bot and handle job scheduling"""
         try:
