@@ -47,6 +47,16 @@ class DomainMonitorBot:
         await update.message.reply_text(f"Hello {user.first_name}, I'm your Domain Monitor Bot! I'm here to notify you about domain expiration dates.")
         logging.info(f"User {user.id} initiated the /start command.")
 
+    async def get_status(self, update: Update, context):
+        """Handle the /status command"""
+        await update.message.reply_text("This is the domain status.")
+        logging.info("User requested status.")
+
+    async def check_domains(self, update: Update, context):
+        """Handle the /check command"""
+        await update.message.reply_text("Checking domain expiration dates...")
+        logging.info("User initiated domain check.")
+
     def load_domains_from_csv(self, filename='domains.csv'):
         try:
             with open(filename, 'r') as f:
