@@ -23,4 +23,4 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_IDS: ${{ secrets.CHAT_IDS }}
-        run: python domain_checker.py
+        run: python domain_bot.py
