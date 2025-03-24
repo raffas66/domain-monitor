@@ -128,4 +128,4 @@ class DomainMonitorBot:
 TOKEN = os.getenv('7505234682:AAE6l0ybYR62JH9bcVyc0CDRNRDgK6PpkqQ')  # Set in environment variables
 bot = DomainMonitorBot(TOKEN)
 bot.run()
-            .
+        
