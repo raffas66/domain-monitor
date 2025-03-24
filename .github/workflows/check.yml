@@ -1,28 +1,31 @@
 name: Domain Expiration Check
+
 on:
-  schedule:
-    - cron: "0 */48 * * *" # Runs every 48 hours (2 days)
-  workflow_dispatch: # Allow manual triggers
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   check:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
-          python-version: "3.10"
+          python-version: "3.x" # Specify your Python version
 
       - name: Install dependencies
         run: |
-          pip install requests
-          pip install python-dateutil
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install python-telegram-bot
 
-      - name: Run Domain Check
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          CHAT_IDS: ${{ secrets.CHAT_IDS }}
+      - name: Run script
         run: python domain_bot.py
