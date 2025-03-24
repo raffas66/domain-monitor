@@ -2,8 +2,7 @@
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from telegram.ext import BotCommandScopeAllPrivateChats
-from telegram import Update
+from telegram import BotCommand
 import logging
 import requests
 import os
@@ -88,38 +87,33 @@ class DomainMonitorBot:
         return (renewal_date.date() - datetime.now().date()).days
 
     async def setup_commands(self):
+        # Set bot commands using BotCommand
         commands = [
-            ("start", "Start the bot"),
-            ("check", "Check expiring domains")
+            BotCommand("start", "Start the bot"),
+            BotCommand("check", "Check expiring domains")
         ]
-        await self.application.bot.set_my_commands(
-            commands,
-            scope=BotCommandScopeAllPrivateChats()
-        )
-
-    # ... (keep existing methods: start, check_authorization, add_domain, 
-    # get_status, check_domains, send_daily_notification, etc.) ...
+        await self.application.bot.set_my_commands(commands)
 
     def run(self):
         try:
             logging.info("Bot starting...")
-            
+
             # Schedule daily notifications
             self.application.job_queue.run_daily(
                 self.send_daily_notification,
-                time=time(hour=10, minute=0)
+                time=datetime.time(hour=10, minute=0)  # Make sure to import 'datetime' for time if needed
             )
-            
+
             # Schedule urgent checks every 2 days
             self.application.job_queue.run_repeating(
                 self.send_telegram_alert,
                 interval=timedelta(days=2),
                 first=10
             )
-            
+
             # Start polling
             self.application.run_polling()
-            
+
         except Exception as e:
             logging.error(f"Error running bot: {str(e)}")
             raise
@@ -128,4 +122,3 @@ class DomainMonitorBot:
 TOKEN = os.getenv('7505234682:AAE6l0ybYR62JH9bcVyc0CDRNRDgK6PpkqQ')  # Set in environment variables
 bot = DomainMonitorBot(TOKEN)
 bot.run()
-        
