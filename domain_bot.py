@@ -39,6 +39,13 @@ class DomainMonitorBot:
         # Load domains from CSV on startup
         self.load_domains_from_csv()
 
+        # Define the 'start' method here
+    async def start(self, update: Update, context):
+        """Handle the /start command"""
+        user = update.effective_user
+        await update.message.reply_text(f"Hello {user.first_name}, I'm your Domain Monitor Bot! I'm here to notify you about domain expiration dates.")
+        logging.info(f"User {user.id} initiated the /start command.")
+
     def load_domains_from_csv(self, filename='domains.csv'):
         try:
             with open(filename, 'r') as f:
