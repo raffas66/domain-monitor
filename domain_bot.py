@@ -1,6 +1,7 @@
 ﻿import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
+from telegram import Update  # Add this import for Update class
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from telegram import BotCommand
 import logging
