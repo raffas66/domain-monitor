@@ -17,7 +17,9 @@ jobs:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          pip install requests
+          pip install python-dateutil
 
       - name: Run Domain Check
         env:
