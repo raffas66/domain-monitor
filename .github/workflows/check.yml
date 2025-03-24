@@ -1,25 +1,26 @@
 name: Domain Expiration Check
 on:
   schedule:
-    - cron: '0 */48 * * *'  # Runs every 48 hours (2 days)
-  workflow_dispatch:        # Allow manual triggers
+    - cron: "0 */48 * * *" # Runs every 48 hours (2 days)
+  workflow_dispatch: # Allow manual triggers
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-          
+          python-version: "3.10"
+
       - name: Install dependencies
-        run: pip install requests python-dotenv
-          
+        run: pip install requests
+
       - name: Run Domain Check
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_IDS: ${{ secrets.CHAT_IDS }}
-        run: python domain_bot.py
+        run: python domain_checker.py
