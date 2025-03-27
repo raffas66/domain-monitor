@@ -1,46 +1,43 @@
 ﻿import csv
 from datetime import datetime, timedelta, time
-from dateutil.parser import parse
-from telegram import Update  # Add this import for Update class
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from telegram import BotCommand
 import logging
 import requests
 import os
 
+
 class DomainMonitorBot:
     def __init__(self, token):
-        self.inventory = {}
+        self.inventory = {}  # Now stores only domain names
         self.authorized_users = [
             7949976647,  # Admin
             7845296753   # Additional authorized user
         ]
-        self.notification_chats = ['7949976647', '7845296753']  # Separate notification targets
-        
-        # Rate limiting setup
-        self.rate_limit = {}
-        self.rate_limit_duration = timedelta(minutes=1)
-        self.rate_limit_max = 5
-        
+        # Separate notification targets
+        self.notification_chats = ['7949976647', '7845296753']
+
         # Set up logging
         logging.basicConfig(
             filename='bot.log',
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             level=logging.INFO
         )
-        
+
         # Initialize application
         self.application = Application.builder().token(token).build()
-        
+        # Ensure job_queue is properly initialized
+        self.job_queue = self.application.job_queue
+
         # Add command handlers
         self.application.add_handler(CommandHandler("start", self.start))
         self.application.add_handler(CommandHandler("status", self.get_status))
-        self.application.add_handler(CommandHandler("check", self.check_domains))
-        
+        self.application.add_handler(
+            CommandHandler("check", self.check_domains))
+
         # Load domains from CSV on startup
         self.load_domains_from_csv()
 
-        # Define the 'start' method here
     async def start(self, update: Update, context):
         """Handle the /start command"""
         user = update.effective_user
@@ -48,14 +45,33 @@ class DomainMonitorBot:
         logging.info(f"User {user.id} initiated the /start command.")
 
     async def get_status(self, update: Update, context):
-        """Handle the /status command"""
-        await update.message.reply_text("This is the domain status.")
-        logging.info("User requested status.")
+        """Handle /status command"""
+        status_report = self._generate_status_report()
+        await update.message.reply_text(
+            text=status_report,
+            parse_mode="MarkdownV2"
+        )
 
     async def check_domains(self, update: Update, context):
-        """Handle the /check command"""
-        await update.message.reply_text("Checking domain expiration dates...")
-        logging.info("User initiated domain check.")
+        """Handle /check command"""
+        alert_domains = self.get_immediate_expiry_domains(days=5)
+        if alert_domains:
+            await self.send_telegram_alert(context.bot)
+        else:
+            await update.message.reply_text("✅ No domains expiring within 5 days!")
+
+    def _generate_status_report(self):
+        report = "📊 **Domain Status Report**\n\n"
+        for domain, info in self.inventory.items():
+            days_left = (info['renewal_date'].date() -
+                         datetime.now().date()).days
+            report += (
+                f"• **{domain}**\n"
+                f"  - Expires: `{info['renewal_date'].strftime('%d-%b-%Y')}`\n"
+                f"  - Days Left: `{days_left}`\n"
+                f"  - Status: {info.get('situation', 'Unknown')}\n\n"
+            )
+        return report
 
     def load_domains_from_csv(self, filename='domains.csv'):
         try:
@@ -63,90 +79,88 @@ class DomainMonitorBot:
                 reader = csv.DictReader(f)
                 for row in reader:
                     self.add_domain(
-                        name=row['domain_name'],
-                        renewal_date=row['expiration_date']   
+                        name=row['domain_name']  # Only add the domain name now
                     )
             logging.info(f"Successfully loaded domains from {filename}")
         except Exception as e:
             logging.error(f"Failed to load CSV: {str(e)}")
 
-    async def send_telegram_alert(self, context):
-        alert_domains = self.get_immediate_expiry_domains(days=5)
-        
-        if alert_domains:
-            message = "🚨 URGENT Domain Expiration Alert:\n\n"
-            message += "\n".join(
-                [f"- {d['name']} expires on {d['renewal_date'].strftime('%Y-%m-%d')}"
-                 f" ({self._days_remaining(d['renewal_date'])} days left)"
-                 for d in alert_domains]
+    def add_domain(self, name):
+        """Add a domain to the inventory"""
+        self.inventory[name] = {
+        }  # Now the inventory only contains domain names
+
+
+async def send_telegram_alert(self, context):
+    alert_domains = self.get_immediate_expiry_domains(days=5)
+
+    if alert_domains:
+        message = "🚨 **URGENT DOMAIN ALERT** 🚨\n\n"
+        for domain in alert_domains:
+            info = self.inventory[domain['name']]
+            expiration_date = info['renewal_date'].strftime("%d-%b-%Y")
+            days_left = (info['renewal_date'].date() -
+                         datetime.now().date()).days
+
+            message += (
+                f"🔹 **{domain['name']}**\n"
+                f"▫️ *Expires*: `{expiration_date}`\n"
+                f"▫️ *Days Left*: `{days_left}`\n"
+                f"▫️ *Provider*: {info.get('provider', 'N/A')}\n"
+                f"▫️ *Portal*: {info.get('link', 'Not available')}\n\n"
             )
-            
-            # Send to all notification chats
-            for chat_id in self.notification_chats:
-                try:
-                    await context.bot.send_message(
-                        chat_id=chat_id,
-                        text=message
-                    )
-                    logging.info(f"Sent alert to {chat_id}")
-                except Exception as e:
-                    logging.error(f"Failed to send to {chat_id}: {str(e)}")
 
-    def get_immediate_expiry_domains(self, days=5):
-        today = datetime.now().date()
-        return [{
-            'name': domain,
-            'renewal_date': info['renewal_date'].date(),
-            'days_remaining': (info['renewal_date'].date() - today).days
-        } for domain, info in self.inventory.items() 
-         if info['renewal_date'] and (info['renewal_date'].date() - today).days <= days]
+        # Send to all notification chats with error handling
+        for chat_id in self.notification_chats:
+            try:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=message,
+                    parse_mode="MarkdownV2"  # Fixed parse mode
+                )
+            except Exception as e:
+                logging.error(f"Failed to send alert to {chat_id}: {str(e)}")
+                # Consider adding retry logic here
 
-    def _days_remaining(self, renewal_date):
-        return (renewal_date.date() - datetime.now().date()).days
-
-    async def setup_commands(self):
-        # Set bot commands using BotCommand
-        commands = [
-            BotCommand("start", "Start the bot"),
-            BotCommand("check", "Check expiring domains")
-        ]
-        await self.application.bot.set_my_commands(commands)
-
+    def get_immediate_expiry_domains(self):
+        # Since we are no longer dealing with renewal dates, this function is no longer relevant
+        # Return all domains in the inventory
+        return [{'name': domain} for domain in self.inventory]
 
     async def send_daily_notification(self, context):
         """This is the function that sends a daily notification."""
-        # This is just a sample notification; you can customize it further
-        message = "Merhaba!, This is your daily domain expiration notification!"
+        message = "Merhaba!, This is your daily domain check notification!"
         for chat_id in self.notification_chats:
             try:
                 await context.bot.send_message(chat_id=chat_id, text=message)
                 logging.info(f"Sent daily notification to {chat_id}")
             except Exception as e:
-                logging.error(f"Failed to send daily notification to {chat_id}: {str(e)}")
+                logging.error(
+                    f"Failed to send daily notification to {chat_id}: {str(e)}")
 
     def run(self):
         """Start the bot and handle job scheduling"""
         try:
             logging.info("Bot starting...")
-            
+
             # Ensure job_queue is initialized
-            if not self.application.job_queue:
+            if not self.job_queue:
                 logging.error("No JobQueue available!")
                 return
-            
+
             # Schedule daily notifications
-            self.application.job_queue.run_daily(
+            self.job_queue.run_daily(
                 self.send_daily_notification,
                 time=time(hour=10, minute=0)
             )
-            
+
             # Schedule urgent checks every 2 days
-            self.application.job_queue.run_repeating(
+            self.job_queue.run_repeating(
                 self.send_telegram_alert,
                 interval=timedelta(days=2),
                 first=10
             )
-            
+
             # Start polling
             self.application.run_polling()
 
@@ -155,6 +169,7 @@ class DomainMonitorBot:
             raise
 
 # Configuration
-TOKEN = '7505234682:AAE6l0ybYR62JH9bcVyc0CDRNRDgK6PpkqQ'  # Replace with your actual token
+# Replace with your actual token
+TOKEN = '7505234682:AAFCO9sFT3qUC1xXFqU7MHQ1SpNTiY30U-A'
 bot = DomainMonitorBot(TOKEN)
 bot.run()
