@@ -1,28 +1,28 @@
 name: Domain Expiration Check
 on:
   schedule:
-    - cron: "0 */48 * * *" # Every 2 days
+    - cron: "0 */48 * * *" # Runs every 2 days
   workflow_dispatch:
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4 # Critical first step
+      - name: Checkout Code
+        uses: actions/checkout@v4 # Required first step
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-          cache: "pip" # Caches dependencies for faster runs
 
       - name: Install Dependencies
-        run: |
+        run: | # Explicit installation without file checks
           python -m pip install --upgrade pip
           pip install python-telegram-bot==20.5 requests python-dateutil
 
       - name: Run Domain Monitor
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }} # Fix typo: TEGRAM_TOKEN → TELEGRAM_TOKEN
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_IDS: ${{ secrets.CHAT_IDS }}
         run: python domain_bot.py
