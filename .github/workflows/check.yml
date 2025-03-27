@@ -1,7 +1,7 @@
 name: Domain Expiration Check
 on:
   schedule:
-    - cron: "0 */48 * * *" # Every 2 days
+    - cron: "0 */48 * * *" # Every 48 hours
   workflow_dispatch:
 
 jobs:
@@ -14,13 +14,14 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+          cache: "pip"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install python-telegram-bot requests python-dateutil
+          pip install python-telegram-bot==20.5 requests python-dateutil
 
-      - name: Run Bot
+      - name: Run Domain Monitor
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_IDS: ${{ secrets.CHAT_IDS }}
