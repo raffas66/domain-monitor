@@ -138,24 +138,17 @@ async def send_telegram_alert(self, context):
                 logging.error(
                     f"Failed to send daily notification to {chat_id}: {str(e)}")
 
-    def run(self):
+    def run(self):  # PROPERLY INDENTED UNDER CLASS
         """Start the bot and handle job scheduling"""
         try:
             logging.info("Bot starting...")
 
-            # Ensure job_queue is initialized
-            if not self.job_queue:
-                logging.error("No JobQueue available!")
-                return
-
-            # Schedule daily notifications
-            self.job_queue.run_daily(
+            # Schedule notifications
+            self.application.job_queue.run_daily(  # Fixed: use application.job_queue
                 self.send_daily_notification,
                 time=time(hour=10, minute=0)
             )
-
-            # Schedule urgent checks every 2 days
-            self.job_queue.run_repeating(
+            self.application.job_queue.run_repeating(
                 self.send_telegram_alert,
                 interval=timedelta(days=2),
                 first=10
